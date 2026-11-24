@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskMaster Pro | Acceso Seguro</title>
+    <style>
+        body { font-family: system-ui, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 15px; }
+        .card { max-width: 680px; margin: auto; background: #1e293b; padding: 22px; border-radius: 10px; border: 1px solid #334155; }
+        h2 { color: #38bdf8; margin-top: 0; text-align: center; }
+        .login-box { max-width: 360px; margin: 50px auto; text-align: center; }
+        label { display: block; font-size: 12px; color: #94a3b8; text-align: left; margin-bottom: 4px; font-weight: bold; }
+        input, select { width: 100%; padding: 9px; border-radius: 5px; border: 1px solid #475569; background: #0f172a; color: #fff; box-sizing: border-box; margin-bottom: 10px; }
+        .pass-wrap { position: relative; }
+        .toggle-pass { position: absolute; right: 10px; top: 9px; background: none; border: none; color: #38bdf8; cursor: pointer; font-size: 12px; padding: 0; width: auto; }
+        button { width: 100%; padding: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; background: #0284c7; color: #fff; }
+        button:hover { background: #0369a1; }
+        .grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
+        @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+        .task { display: flex; justify-content: space-between; align-items: center; background: #0f172a; padding: 10px 12px; border-radius: 6px; margin-top: 8px; border-left: 4px solid #38bdf8; }
+        .task.Alta { border-left-color: #ef4444; }
+        .task.Media { border-left-color: #f59e0b; }
+        .task.Baja { border-left-color: #10b981; }
+        .done span { text-decoration: line-through; color: #64748b; }
+        .topbar { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 10px; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+    <!-- PANTALLA DE AUTENTICACIÓN -->
+    <div class="card login-box" id="vistaLogin">
+        <h2>🔐 TaskMaster Pro</h2>
+        <p style="font-size:13px; color:#94a3b8;">Clave institucional: <strong>cecytec2026</strong></p>
+        <label>Usuario / Equipo:</label>
+        <input type="text" id="usuario" placeholder="Ej. Equipo-502">
+        <label>Contraseña de Acceso:</label>
+        <div class="pass-wrap">
+            <input type="password" id="clave" placeholder="••••••••">
+            <button type="button" class="toggle-pass" onclick="verClave()">Mostrar</button>
+        </div>
+        <button onclick="iniciarSesion()">Desbloquear Sistema</button>
+    </div>
+
+    <!-- PANEL PRINCIPAL PROTEGIDO -->
+    <div class="card" id="vistaApp" style="display:none;">
+        <div class="topbar">
+            <div><strong style="color:#38bdf8; font-size:18px;">📋 TaskMaster Pro</strong> <small id="lblUser" style="color:#94a3b8;"></small></div>
+            <button onclick="cerrarSesion()" style="width:auto; background:#dc2626; padding:6px 12px; font-size:12px;">Cerrar Sesión</button>
+        </div>
+
+        <div class="grid">
+            <div><label>Nueva Tarea:</label><input type="text" id="txtTarea" placeholder="Descripción del entregable..."></div>
+            <div><label>Prioridad:</label>
+                <select id="selPrio">
+                    <option value="Alta">Alta</option>
+                    <option value="Media" selected>Media</option>
+                    <option value="Baja">Baja</option>
+                </select>
+            </div>
+            <div><label>&nbsp;</label><button onclick="agregarTarea()">+ Agregar</button></div>
+        </div>
+
+        <div id="contenedorTareas"></div>
+    </div>
+
+<script>
+    const CLAVE_MAESTRA = "cecytec2026";
+
+    function verClave() {
+        const inp = document.getElementById("clave");
+        inp.type = inp.type === "password" ? "text" : "password";
+    }
+
+    function iniciarSesion() {
+        const user = document.getElementById("usuario").value.trim() || "Alumno 502";
+        const pass = document.getElementById("clave").value;
+        if (pass === CLAVE_MAESTRA) {
+            localStorage.setItem("tm_user_502", user);
+            document.getElementById("vistaLogin").style.display = "none";
+            document.getElementById("vistaApp").style.display = "block";
+            document.getElementById("lblUser").innerText = `(${user})`;
+            renderTareas();
+        } else {
+            alert("❌ Contraseña incorrecta.");
+        }
+    }
+
+    function cerrarSesion() {
+        localStorage.removeItem("tm_user_502");
+        document.getElementById("clave").value = "";
+        document.getElementById("vistaApp").style.display = "none";
+        document.getElementById("vistaLogin").style.display = "block";
+    }
+
+    function getTareas() { return JSON.parse(localStorage.getItem("tm_auth_502")) || []; }
+    function setTareas(t) { localStorage.setItem("tm_auth_502", JSON.stringify(t)); }
+
+    function agregarTarea() {
+        const texto = document.getElementById("txtTarea").value.trim();
+        const prio = document.getElementById("selPrio").value;
+        if (!texto) { alert("Escribe una tarea."); return; }
+
+        const lista = getTareas();
+        lista.push({ id: Date.now(), texto, prio, hecha: false });
+        setTareas(lista);
+        document.getElementById("txtTarea").value = "";
+        renderTareas();
+    }
+
+    function toggleTarea(id) {
+        const lista = getTareas();
+        const item = lista.find(t => t.id === id);
+        if (item) { item.hecha = !item.hecha; setTareas(lista); renderTareas(); }
+    }
+
+    function borrarTarea(id) {
+        setTareas(getTareas().filter(t => t.id !== id));
+        renderTareas();
+    }
+
+    function renderTareas() {
+        const lista = getTareas();
+        const box = document.getElementById("contenedorTareas");
+        box.innerHTML = lista.length ? "" : "<p style='color:#64748b; text-align:center;'>Sin tareas registradas.</p>";
+
+        lista.forEach(t => {
+            box.innerHTML += `
+                <div class="task ${t.prio} ${t.hecha ? 'done' : ''}">
+                    <span><strong>[${t.prio}]</strong> ${t.texto}</span>
+                    <div style="display:flex; gap:6px;">
+                        <button onclick="toggleTarea(${t.id})" style="width:auto; padding:5px 9px; background:#16a34a; font-size:12px;">${t.hecha ? 'Reabrir' : '✓'}</button>
+                        <button onclick="borrarTarea(${t.id})" style="width:auto; padding:5px 9px; background:#dc2626; font-size:12px;">X</button>
+                    </div>
+                </div>`;
+        });
+    }
+
+    // Mantener sesión activa si ya inició previamente
+    if (localStorage.getItem("tm_user_502")) {
+        document.getElementById("vistaLogin").style.display = "none";
+        document.getElementById("vistaApp").style.display = "block";
+        document.getElementById("lblUser").innerText = `(${localStorage.getItem("tm_user_502")})`;
+        renderTareas();
+    }
+</script>
+</body>
+</html>
